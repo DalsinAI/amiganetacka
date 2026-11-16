@@ -1,0 +1,5 @@
+dist: xenial
+language: c
+script:
+  - sudo apt-get install liballegro4-dev
+  - make
