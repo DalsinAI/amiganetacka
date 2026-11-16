@@ -1,0 +1,16 @@
+{
+  "name": "Netacka",
+  "version": "1.0-gfos1",
+  "drawer": "Netacka",
+  "program": "Netacka",
+  "cpu": "68040",
+  "fpu": false,
+  "space": 900000,
+  "modules": [],
+  "keep": [
+    "netacka.ini"
+  ],
+  "parent": "Work:Games",
+  "badge": "icons/art/netacka.png",
+  "script": "Install-Netacka"
+}
