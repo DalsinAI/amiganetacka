@@ -1,0 +1,89 @@
+# Netacka for GFOS: 68040, libnix, soft float, Allegro 4 from gfopenallegro
+# (allegro4.library on acgame.library, both in the drawer's Libs/), libnet
+# (vendored) with its internet driver on bsdsocket.library.
+#   make -f amiga/Makefile.amigaos PREFIX=<stove>/prefix A4=<gfopenallegro/allegro4> A4OUT=.. ACGOUT=..
+PREFIX ?= $(HOME)/AmiCradle/kitchen/stoves/os32-gcc16-open6/prefix
+A4 ?= ../gfopenallegro/allegro4
+A4OUT ?= $(A4)/build-amiga
+ACGOUT ?= ../acgame/build-amiga
+CC = $(PREFIX)/bin/m68k-amigaos-gcc
+AR = $(PREFIX)/bin/m68k-amigaos-ar
+STRIP = $(PREFIX)/bin/m68k-amigaos-strip
+NAME = Netacka
+BUILD ?= build/amigaos
+DIR = $(BUILD)/$(NAME)
+
+SOFT = -specs=$(A4)/specs/m68k-soft-m68040.specs
+BASE = -noixemul -m68040 $(SOFT) -O2 -fomit-frame-pointer -fno-tree-loop-distribute-patterns -w
+
+# libnet: the core and every driver file. No TARGET_*: platdefs.h then
+# takes BSD sockets (__USE_REAL_SOCKS__), the drivers for other systems
+# build as empty stubs. The internet driver's socket calls go to
+# bsdsocket.library through amiga/amiga_net.h.
+NET_CORE = core channels config conns lists connhelp timer fixaddr classes drivers threads wait address
+NET_DRV = nonet wsockdos template ipx ipxsocks serial serdos serlinux local
+NET_SOCK = internet inetaddr
+NET_OBJS = $(patsubst %,$(BUILD)/net/core/%.o,$(NET_CORE)) \
+	$(patsubst %,$(BUILD)/net/drivers/%.o,$(NET_DRV) $(NET_SOCK))
+NET_CFLAGS = $(BASE) -Ilibnet/include -Ilibnet/lib/include
+
+# the game: libnix's start-up is called start, like the game's menu
+GAME = netacka net ui nuklear bot genialny_bot0 genialny_bot
+GAME_OBJS = $(patsubst %,$(BUILD)/obj/%.o,$(GAME)) $(BUILD)/obj/amiga_start.o
+CFLAGS = $(BASE) -fgnu89-inline -fcommon -I$(A4)/include -Ilibnet/include -Dstart=netacka_start
+LIBS = $(BUILD)/libnet.a $(A4OUT)/liballeg.a -lm
+
+all: $(DIR)/$(NAME) package
+
+$(BUILD)/libnet.a: $(NET_OBJS)
+	rm -f $@
+	$(AR) rcs $@ $^
+
+$(BUILD)/net/core/%.o: libnet/lib/core/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(NET_CFLAGS) -c -o $@ $<
+
+$(patsubst %,$(BUILD)/net/drivers/%.o,$(NET_DRV)): $(BUILD)/net/drivers/%.o: libnet/lib/drivers/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(NET_CFLAGS) -c -o $@ $<
+
+$(patsubst %,$(BUILD)/net/drivers/%.o,$(NET_SOCK)): $(BUILD)/net/drivers/%.o: libnet/lib/drivers/%.c amiga/amiga_net.h
+	@mkdir -p $(dir $@)
+	$(CC) $(NET_CFLAGS) -include amiga/amiga_net.h -c -o $@ $<
+
+$(BUILD)/obj/amiga_net.o: amiga/amiga_net.c amiga/amiga_net.h
+	@mkdir -p $(dir $@)
+	$(CC) $(BASE) -c -o $@ $<
+
+$(BUILD)/obj/amiga_start.o: amiga/amiga_start.c
+	@mkdir -p $(dir $@)
+	$(CC) $(BASE) -c -o $@ $<
+
+$(BUILD)/obj/%.o: %.c netacka.h ui.h
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILD)/$(NAME).debug: $(GAME_OBJS) $(BUILD)/obj/amiga_net.o $(BUILD)/libnet.a
+	$(CC) -noixemul -m68040 $(SOFT) -o $@ $(GAME_OBJS) $(BUILD)/obj/amiga_net.o $(LIBS)
+
+$(DIR)/$(NAME): $(BUILD)/$(NAME).debug
+	@mkdir -p $(DIR)
+	$(STRIP) -o $@ $<
+
+# The drawer: the game, netacka.ini, Libs/ with allegro4.library and
+# acgame.library, the read-mes and the icons.
+package: $(DIR)/$(NAME)
+	mkdir -p $(DIR)/Libs
+	cp netacka.ini $(DIR)/
+	cp $(A4OUT)/allegro4.library $(ACGOUT)/acgame.library $(DIR)/Libs/
+	cp amiga/AMIGA_PORT.md $(DIR)/ReadMe
+	cp README.md $(DIR)/ReadMe-Netacka
+	cp LICENSE $(DIR)/COPYING.txt
+	cp amiga/icons/$(NAME).info amiga/icons/ReadMe.info $(DIR)/
+	for f in ReadMe-Netacka COPYING.txt; do cp amiga/icons/ReadMe.info $(DIR)/$$f.info; done
+	cp amiga/icons/$(NAME)-drawer.info $(BUILD)/$(NAME).info
+	cp amiga/Install-$(NAME) amiga/Install-$(NAME).info $(BUILD)/
+
+clean:
+	rm -rf $(BUILD)
+.PHONY: all package clean

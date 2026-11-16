@@ -1255,8 +1255,12 @@ int set_mode(int w, int h)
     int depth = desktop_color_depth();
     if (depth == 0)
         crash("couldn't determine color depth");
+#ifndef __amigaos__
     if (depth != 24 && depth != 32)
         crash("expecting 24-bit or 32-bit color depth");
+#endif
+    /* GFOS: allegro4.library draws in 8 bits through the palette (pal);
+     * every colour here is a palette_color[] or makeacol() of it. */
 
     set_color_depth(depth);
 
@@ -1306,7 +1310,12 @@ int main()
         crash("couldn't set video mode");
 
     if (start_net())
+#ifdef __amigaos__
+        crash("no TCP/IP stack: Netacka plays over the network, even "
+              "against bots on this Amiga. Start Roadshow and try again.");
+#else
         return 1;
+#endif
 
     ui_init();
     // ui_demo();

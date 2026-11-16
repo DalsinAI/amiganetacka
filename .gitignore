@@ -2,3 +2,6 @@ libnet/port.mak
 netacka
 *.o
 *.a
+build/
+build-amiga-package/
+__pycache__/
