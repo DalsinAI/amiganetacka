@@ -22,6 +22,7 @@ BASE = -noixemul -m68040 $(SOFT) -O2 -fomit-frame-pointer -fno-tree-loop-distrib
 # bsdsocket.library through amiga/amiga_net.h.
 NET_CORE = core channels config conns lists connhelp timer fixaddr classes drivers threads wait address
 NET_DRV = nonet wsockdos template ipx ipxsocks serial serdos serlinux local
+# inetaddr.c looks names up on a thread of its own (-lpthread)
 NET_SOCK = internet inetaddr
 NET_OBJS = $(patsubst %,$(BUILD)/net/core/%.o,$(NET_CORE)) \
 	$(patsubst %,$(BUILD)/net/drivers/%.o,$(NET_DRV) $(NET_SOCK))
@@ -31,7 +32,7 @@ NET_CFLAGS = $(BASE) -Ilibnet/include -Ilibnet/lib/include
 GAME = netacka net ui nuklear bot genialny_bot0 genialny_bot
 GAME_OBJS = $(patsubst %,$(BUILD)/obj/%.o,$(GAME)) $(BUILD)/obj/amiga_start.o
 CFLAGS = $(BASE) -fgnu89-inline -fcommon -I$(A4)/include -Ilibnet/include -Dstart=netacka_start
-LIBS = $(BUILD)/libnet.a $(A4OUT)/liballeg.a -lm
+LIBS = $(BUILD)/libnet.a $(A4OUT)/liballeg.a -lpthread -lm
 
 all: $(DIR)/$(NAME) package
 
